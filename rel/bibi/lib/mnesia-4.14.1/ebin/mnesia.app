@@ -1,4 +1,4 @@
-%% app generated at {2016,10,24} {15,3,2}
+%% app generated at {2016,11,22} {7,1,44}
 {application,mnesia,
              [{description,"MNESIA  CXC 138 12"},
               {vsn,"4.14.1"},

@@ -1,4 +1,4 @@
-%% app generated at {2016,10,24} {15,3,1}
+%% app generated at {2016,11,22} {7,1,43}
 {application,bibi,
              [{description,[]},
               {vsn,"1"},
