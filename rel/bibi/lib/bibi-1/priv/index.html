@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="author" content="BinTu">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>KuaiBuPo</title>
+        <link rel="stylesheet" href="static/styles/main.css">
+        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+        <link rel="icon" href="favicon.ico" type="image/x-icon">
+    </head>
+    <body>
+        <div class="wrapper">
+            <div class="banner">
+                <h1>天下武功 唯快不破</h1>
+                <span id="status"></span>
+            </div>
+            <div id="historyMsg">
+            </div>
+            <div class="controls" >
+                <div class="items">
+                    <input id="emoji" type="button" value="emoji" title="emoji" />
+                    <label for="sendImage" class="imageLable">
+                        <input type="button" value="image"  />
+                        <input id="sendImage" type="file" value="image"/>
+                    </label>
+                    <input id="clearBtn" type="button" value="clear" title="clear screen" />
+                </div>
+                <textarea id="messageInput" placeHolder="enter to send"></textarea>
+                <input id="sendBtn" type="button" value="SEND">
+                <div id="emojiWrapper">
+                </div>
+            </div>
+        </div>
+        <footer>
+            <small>QQ:120148245</a></small>
+        </footer>
+        <script src="static/scripts/chat.js"></script>
+    </body>
+</html>
