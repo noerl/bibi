@@ -23,23 +23,27 @@ Chat.prototype = {
             {
                 case 1000:
                     user = content;
+                    document.getElementById("nick").innerHTML = user.name;
                     break;
                 case 1001:
-                    that._displayNewMsg(content.name, content.msg, color);
+                    switch(content.type)
+                    {
+                        case 1:
+                            that._displayNewMsg(content.name, content.msg, color);
+                            break;
+                        case 2:
+                            that._displayImage(content.name, content.msg, color);
+                            break;
+                        default:
+                            console.log("error type:" + content);
+                    };
                     break;
                 default:
-                    console.log("error log:" + content);
+                    console.log("error pt:" + content);
             };
         //     var msg = nickName + (type == 'login' ? ' joined' : ' left');
         //     that._displayNewMsg('system ', msg, 'red');
         //     document.getElementById('status').textContent = userCount + (userCount > 1 ? ' users' : ' user') + ' online';
-
-        // this.socket.on('newMsg', function(user, msg, color) {
-        //     that._displayNewMsg(user, msg, color);
-        // });
-        // this.socket.on('newImg', function(user, img, color) {
-        //     that._displayImage(user, img, color);
-        // });
 
         };  
 
@@ -51,10 +55,10 @@ Chat.prototype = {
             
             var messageInput = document.getElementById('messageInput'),
                 msg = messageInput.value,
-                color = '#000000';
+                color = '#c00';
             if (e.keyCode == 13 && msg.trim().length != 0) {
                 messageInput.value = '';
-                var msgObj = {name:user.name, msg:msg};
+                var msgObj = {name:user.name, type:1, msg:msg};
                 that.socket.send(JSON.stringify(msgObj));
                 that._displayNewMsg(user.name, msg, color);
             };
@@ -63,31 +67,32 @@ Chat.prototype = {
         document.getElementById('sendBtn').addEventListener('click', function() {
             var messageInput = document.getElementById('messageInput'),
                 msg = messageInput.value,
-                color = '#000000';
-            messageInput.value = '';
-            messageInput.focus();
-            if (msg.trim().length != 0) {
-                var msgBin = "{\"sid\":1,\"rid\":2,\"type\":1,\"msg\":" + msg + "}";
-                that.socket.send('postMsg', msg, color);
-                that._displayNewMsg('me', msg, color);
-                return;
-            };
+                color = '#c00';
+                messageInput.value = '';
+                messageInput.focus();
+                if (msg.trim().length != 0) {
+                    var msgObj = {name:user.name, type:1, msg:msg};
+                    that.socket.send(JSON.stringify(msgObj));
+                    that._displayNewMsg(user.name, msg, color);
+                    return;
+                };
         }, false);
 
         document.getElementById('sendImage').addEventListener('change', function() {
             if (this.files.length != 0) {
                 var file = this.files[0],
                     reader = new FileReader(),
-                    color = '#000000';
+                    color = '#c00';
                 if (!reader) {
-                    that._displayNewMsg('system', '!your browser doesn\'t support fileReader', 'red');
+                    that._displayNewMsg('系统', '浏览器不支持发送图片', 'red');
                     this.value = '';
                     return;
                 };
                 reader.onload = function(e) {
                     this.value = '';
-                    that.socket.emit('img', e.target.result, color);
-                    that._displayImage('me', e.target.result, color);
+                    var msgObj = {name:user.name, type:2, msg:e.target.result};
+                    that.socket.send(JSON.stringify(msgObj));
+                    that._displayImage(user.name, e.target.result, color);
                 };
                 reader.readAsDataURL(file);
             };
