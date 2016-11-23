@@ -7,7 +7,7 @@ var Chat = function() {
 };
 Chat.prototype = {
     init: function() {
-        var that = this, name = "";
+        var that = this, user = new Object();
         this.socket = new WebSocket("ws://" + window.location.host + "/websocket"); 
         this.socket.onopen = function(evt) { onOpen(evt) }; 
         this.socket.onmessage = function(evt) { onMessage(evt) }; 
@@ -18,9 +18,18 @@ Chat.prototype = {
         };  
 
         function onMessage(evt) {
-            user = 'system'
-            color = '#000000';
-            that._displayNewMsg(user, evt.data, color);
+            var content = JSON.parse(evt.data), color = '#000000';
+            switch(content.pt)
+            {
+                case 1000:
+                    user = content;
+                    break;
+                case 1001:
+                    that._displayNewMsg(content.name, content.msg, color);
+                    break;
+                default:
+                    console.log("error log:" + content);
+            };
         //     var msg = nickName + (type == 'login' ? ' joined' : ' left');
         //     that._displayNewMsg('system ', msg, 'red');
         //     document.getElementById('status').textContent = userCount + (userCount > 1 ? ' users' : ' user') + ' online';
@@ -35,7 +44,7 @@ Chat.prototype = {
         };  
 
         function onError(evt) {
-            document.getElementById('status').textContent = '连接失败:' + evt.data;
+            document.getElementById('status').textContent = '连接失败';
         };
 
         document.getElementById('messageInput').addEventListener('keyup', function(e) {
@@ -45,9 +54,9 @@ Chat.prototype = {
                 color = '#000000';
             if (e.keyCode == 13 && msg.trim().length != 0) {
                 messageInput.value = '';
-                var msgBin = "{\"sid\":1,\"rid\":2,\"type\":1,\"msg\":" + msg + "}";
-                that.socket.send(msgBin);
-                that._displayNewMsg('me', msg, color);
+                var msgObj = {name:user.name, msg:msg};
+                that.socket.send(JSON.stringify(msgObj));
+                that._displayNewMsg(user.name, msg, color);
             };
         }, false);
 

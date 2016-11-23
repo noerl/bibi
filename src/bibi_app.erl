@@ -24,6 +24,7 @@ start(normal, []) ->
 	{ok, _} = cowboy:start_clear(http, 100, [{port, 9022}], #{
 		env => #{dispatch => Dispatch}
 	}),
+	bi_room:init(),
     bibi_sup:start_link().
 
 stop(_State) ->

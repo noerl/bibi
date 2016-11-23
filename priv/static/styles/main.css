@@ -10,21 +10,6 @@ html, body {
     margin: 0 auto;
     background-color: #ddd;
 }
-#loginWrapper {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background-color: rgba(5, 5, 5, .6);
-    text-align: center;
-    color: #fff;
-    display: block;
-    padding-top: 200px;
-}
-#nickWrapper {
-    display: none;
-}
 .banner {
     height: 80px;
     width: 100%;
@@ -48,7 +33,7 @@ html, body {
     max-width: 99%;
 }
 .timespan {
-    color: #ddd;
+    color: #000;
 }
 .items {
     height: 30px;
