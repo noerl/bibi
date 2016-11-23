@@ -2,7 +2,8 @@
 
 %% bi_room: bi_room library's entry point.
 
--export([init/0, name/0, add/1, del/1, send/2, send_msg/2]).
+-export([init/0, name/0, add/1, del/1, send/2, send_msg/2,
+	get_name/0, update_name/2]).
 
 -record(user,{
 	id,
@@ -14,7 +15,7 @@
 
 init() ->
 	ets:new(user, [set, public, named_table, {keypos, #user.id}, {write_concurrency,false}, {read_concurrency, false}]),
-	Data = bi_name:get(),
+	Data = bi_name:load(),
 	ets:insert(user, #user{id = 2, data = Data}).
 	
 
@@ -27,6 +28,12 @@ add(Pid) ->
 			ets:insert(user, #user{id = 1, data = [Pid]})
 	end.
 
+get_name() ->
+	[#user{data = {Cur, NameList}}] = ets:lookup(user, 2),
+	{Cur, NameList}.
+
+update_name(Cur, NameList) ->
+	ets:insert(user, #user{id = 2, data = {Cur, NameList}}).
 
 name() ->
 	[#user{data = {Len, NameList}}] = ets:lookup(user, 2),

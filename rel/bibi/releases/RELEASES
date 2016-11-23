@@ -11,6 +11,7 @@
            {cowboy,"2.0.0-pre.4","/home/bibi/rel/bibi/lib/cowboy-2.0.0-pre.4"},
            {hipe,"3.15.2","/home/bibi/rel/bibi/lib/hipe-3.15.2"},
            {inets,"6.3.3","/home/bibi/rel/bibi/lib/inets-6.3.3"},
+           {jsx,"2.8.0","/home/bibi/rel/bibi/lib/jsx-2.8.0"},
            {mnesia,"4.14.1","/home/bibi/rel/bibi/lib/mnesia-4.14.1"},
            {public_key,"1.2","/home/bibi/rel/bibi/lib/public_key-1.2"},
            {runtime_tools,"1.10.1",

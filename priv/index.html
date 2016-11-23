@@ -4,7 +4,6 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <meta name="author" content="BinTu">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>你也是一个有故事的人</title>
         <link rel="stylesheet" href="static/styles/main.css">
         <link rel="shortcut icon" href="static/favicon.ico" type="image/x-icon">
@@ -13,12 +12,14 @@
     <body>
         <div class="wrapper">
             <div class="banner">
-                <img src="static/logo.png"><a id="nick"></a>
+                <img src="static/logo.png"><a id="nick" class="nick"></a>
                 <span id="status"></span>
             </div>
             <div id="historyMsg">
             </div>
             <div class="controls" >
+                <div id="emojiWrapper">
+                </div>
                 <div class="items">
                     <input id="emoji" type="button" value="表情" title="表情" />
                     <label for="sendImage" class="imageLable">
@@ -27,15 +28,12 @@
                     </label>
                     <input id="clearBtn" type="button" value="清屏" title="清屏" />
                 </div>
-                <textarea id="messageInput" placeHolder="enter to send"></textarea>
-                <input id="sendBtn" type="button" value="发送">
-                <div id="emojiWrapper">
+                <div class="sendArea">
+                    <textarea id="messageInput" placeHolder="enter to send"></textarea>
+                    <input id="sendBtn" type="button" value="发送">
                 </div>
             </div>
         </div>
-        <footer>
-            <small>QQ:120148245</a></small>
-        </footer>
         <script src="static/scripts/chat.js"></script>
     </body>
 </html>

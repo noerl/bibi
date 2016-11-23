@@ -7,28 +7,28 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>你也是一个有故事的人</title>
         <link rel="stylesheet" href="static/styles/main.css">
-        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+        <link rel="shortcut icon" href="static/favicon.ico" type="image/x-icon">
         <link rel="icon" href="favicon.ico" type="image/x-icon">
     </head>
     <body>
         <div class="wrapper">
             <div class="banner">
-                <h1>一个人的夜</h1>
+                <img src="static/logo.png"><a id="nick"></a>
                 <span id="status"></span>
             </div>
             <div id="historyMsg">
             </div>
             <div class="controls" >
                 <div class="items">
-                    <input id="emoji" type="button" value="emoji" title="emoji" />
+                    <input id="emoji" type="button" value="表情" title="表情" />
                     <label for="sendImage" class="imageLable">
-                        <input type="button" value="image"  />
+                        <input type="button" value="图片"  />
                         <input id="sendImage" type="file" value="image"/>
                     </label>
-                    <input id="clearBtn" type="button" value="clear" title="clear screen" />
+                    <input id="clearBtn" type="button" value="清屏" title="清屏" />
                 </div>
                 <textarea id="messageInput" placeHolder="enter to send"></textarea>
-                <input id="sendBtn" type="button" value="SEND">
+                <input id="sendBtn" type="button" value="发送">
                 <div id="emojiWrapper">
                 </div>
             </div>
