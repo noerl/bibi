@@ -9,7 +9,6 @@ init(Req0, Opts) ->
 
 
 login(<<"GET">>, Req) ->
-	httpc:set_options([{cookies, enabled}]),
 	QRUrl = "https://ssl.ptlogin2.qq.com/ptqrshow?appid=501004106&e=0&l=M&s=5&d=72&v=4",
 	case httpc:request(QRUrl) of
 		{ok,{{"HTTP/1.1",200,"OK"}, ResponseHeader, Response}} ->
@@ -40,16 +39,11 @@ loop(Cookie) ->
 					timer:sleep(2000),
 					loop(Cookie);
 				"0" -> 
-					[Pt2gguinStr, UinStr, SkeyStr|CookieList] = proplists:get_all_values("set-cookie", ResponseHeader),
-					[Pt2gguin|_] = string:tokens(Pt2gguinStr, ";"),
-					[Uin|_] = string:tokens(UinStr, ";"),
-					[Skey|_] = string:tokens(SkeyStr, ";"),
+					CookieList = proplists:get_all_values("set-cookie", ResponseHeader),
 					PtwebCookie = lists:last(CookieList),
 					[Ptweb|_] = string:tokens(PtwebCookie, ";"),
 					SigUrl = lists:nth(4, string:tokens(Response, "','")),
-					NewCookieList = lists:join("; ", [Pt2gguin,Uin,Skey,Ptweb]),
-					NewCookieStr = lists:concat(NewCookieList),
-					check_sig(SigUrl, NewCookieStr, Ptweb);
+					check_sig(SigUrl, Ptweb);
 				ErrorCode ->
 					io:format("ErrorCode:~p~n", [ErrorCode])
 			end;
@@ -58,30 +52,81 @@ loop(Cookie) ->
 			_Error
 	end.
 
-check_sig(SigUrl, CookieStr, Ptweb)->
-	URL = "http://ptlogin4.web2.qq.com/check_sig?pttype=1&uin=120148245&service=ptqrlogin&nodirect=0&ptsigx=28b3a36b8004cc892df2cf1ce8d35acb9b2d1ca892bd6722d8e285c29c7777d86d778a0dd6d9590f66a0cc48c573c3930dac07306e4a11fd27c6d00588a7057e&s_url=http%3A%2F%2Fw.qq.com%2Fproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&f_url=&ptlang=2052&ptredirect=100&aid=501004106&daid=164&j_later=0&low_login_hour=0&regmaster=0&pt_login_type=3&pt_aid=0&pt_aaid=16&pt_light=0&pt_3rd_aid=0",
-	io:format("SigUrl:~p CookieStr:~p, Ptweb:~p~n", [SigUrl, CookieStr, Ptweb]),
+check_sig(SigUrl, Ptweb)->
 	case httpc:request(get, {SigUrl, [{"te", "gzip, deflate, sdch"}]}, [{autoredirect, false}], []) of
-		{ok,{{"HTTP/1.1",200,"OK"}, ResponseHeader, Response}} ->
-			io:format("ResponseHeader:~p~n", [ResponseHeader]),
-			io:format("Response:~p~n", [Response]);
+		{ok,{{"HTTP/1.1",302,"Found"}, ResponseHeader, _Response}} ->
+			Cookie = create_cookie(Ptweb, ResponseHeader),
+			getvf(Ptweb, Cookie);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
 	end.
 
 
+create_cookie(Ptweb, ResponseHeader) ->
+	[Pt2gguinStr, UinStr, SkeyStr, PuinStr, PskeyStr, Pt4TokenStr|_] = 
+		proplists:get_all_values("set-cookie", ResponseHeader),
+	[Pt2gguin|_] = string:tokens(Pt2gguinStr, ";"),
+	[Uin|_] = string:tokens(UinStr, ";"),
+	[Skey|_] = string:tokens(SkeyStr, ";"),
+	[Puin|_] = string:tokens(PuinStr, ";"),
+	[Pskey|_] = string:tokens(PskeyStr, ";"),
+	[Pt4Token|_] = string:tokens(Pt4TokenStr, ";"),
+	NewCookieList = lists:join("; ", [Pt2gguin, Uin, Skey, Puin, Pskey, Pt4Token, Ptweb]),
+	lists:concat(NewCookieList).
 
-login2(Ptweb) ->
+
+
+getvf(Ptweb, Cookie) ->
+	GetvfUrl = "http://s.web2.qq.com/api/getvfwebqq?" ++ Ptweb ++ "&clientid=53999199&psessionid=&t=1481296800505",
+	case httpc:request(get, {GetvfUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			Vfwebqq = proplists:get_value(<<"vfwebqq">>, Result),
+			io:format("get list info Vfwebqq:~p~n", [Vfwebqq]),
+			login2(Ptweb, Cookie);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+login2(Ptweb, Cookie) ->
 	Login2Url = "http://d1.web2.qq.com/channel/login2",
 	[_, PtwebValue] = string:tokens(Ptweb, "="),
-	Body = "r:{\"ptwebqq\":\"" ++ PtwebValue ++ "\",\"clientid\":53999199,\"psessionid\":\"\",\"status\":\"online\"}",
-	case httpc:request(post, {Login2Url, [{"Cookie", Ptweb}, {"Origin", "http://d1.web2.qq.com"}], "application/x-www-form-urlencoded", Body}, [], []) of
-		{ok,{{"HTTP/1.1",200,"OK"}, ResponseHeader, Response}} ->
-			io:format("ResponseHeader:~p~n", [ResponseHeader]),
-			io:format("Response:~p~n", [Response]);
+	Body = "r={\"ptwebqq\":\"" ++ PtwebValue ++ "\",\"clientid\":53999199,\"psessionid\":\"\",\"status\":\"online\"}",
+	case httpc:request(post, {Login2Url, [{"cookie", Cookie}, {"te", "gzip, deflate"}, {"referer","http://d1.web2.qq.com/proxy.html?v=20151105001&callback=1&id=2"}], "application/x-www-form-urlencoded", Body}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			Psessionid = proplists:get_value(<<"psessionid">>, Result),
+			poll2(Ptweb, Cookie, Psessionid);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
 	end.
-	
+
+poll2(Ptweb, Cookie, Psessionid) ->
+	Login2Url = "https://d1.web2.qq.com/channel/poll2",
+	[_, PtwebValue] = string:tokens(Ptweb, "="),
+	BodyList = [{<<"ptwebqq">>, list_to_binary(PtwebValue)}, {<<"clientid">>, 53999199}, {<<"psessionid">>, Psessionid}, {<<"key">>, <<>>}],
+	R = jsx:encode(BodyList),
+	Body = <<<<"r=">>/binary, R/binary>>,
+	case httpc:request(post, {Login2Url, [{"cookie", Cookie}, {"te", "gzip, deflate, br"}, {"referer","https://d1.web2.qq.com/cfproxy.html?v=20151105001&callback=1"}], "application/x-www-form-urlencoded", Body}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			ResultList = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			case ResultList of
+				[Result] -> 
+					Value = proplists:get_value(<<"value">>, Result),
+					io:format("Value:~p~n", [Value]),
+					[_Font|Msg] = proplists:get_value(<<"content">>, Value),
+					Fid = proplists:get_value(<<"from_uin">>, Value),
+					Tid = proplists:get_value(<<"to_uin">>, Value),
+					io:format("Fid:~p Tid:~p Msg:~p~n", [Fid, Tid, Msg]);
+				_ ->
+					io:format("ResultList:~p~n", [ResultList])
+			end,
+			poll2(Ptweb, Cookie, Psessionid);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
