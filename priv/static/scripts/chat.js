@@ -48,7 +48,7 @@ Chat.prototype = {
         };  
 
         function onError(evt) {
-            document.getElementById('status').textContent = '连接失败';
+            document.getElementById('nick').textContent = '连接失败';
         };
 
         document.getElementById('messageInput').addEventListener('keyup', function(e) {

@@ -12,8 +12,7 @@
     <body>
         <div class="wrapper">
             <div class="banner">
-                <img src="static/logo.png"><a id="nick" class="nick"></a>
-                <span id="status"></span>
+                <a id="nick"></a>
             </div>
             <div id="historyMsg">
             </div>
@@ -22,7 +21,7 @@
                 </div>
                 <div class="items">
                     <input id="emoji" type="button" value="表情" title="表情" />
-                    <label for="sendImage" class="imageLable">
+                    <label id="imageLable" type="button" for="sendImage" ">
                         <input type="button" value="图片"  />
                         <input id="sendImage" type="file" value="image"/>
                     </label>
@@ -34,6 +33,7 @@
                 </div>
             </div>
         </div>
+        <footer><p>联系QQ:120148245</p></footer>
         <script src="static/scripts/chat.js"></script>
     </body>
 </html>
