@@ -160,6 +160,7 @@ websocket_handshake(State=#state{key=Key},
 		<<"upgrade">> => <<"websocket">>,
 		<<"sec-websocket-accept">> => Challenge
 	}, Req),
+	bi_room:add(Pid),
 	Pid ! {{Pid, StreamID}, {switch_protocol, Headers, ?MODULE, {State, HandlerState}}},
 	{ok, Req, Env}.
 
@@ -399,5 +400,6 @@ websocket_close(State=#state{socket=Socket, transport=Transport, extensions=Exte
 	-> {ok, cowboy_middleware:env()}.
 handler_terminate(#state{handler=Handler},
 		HandlerState, Reason) ->
+	bi_room:del(self()),
 	cowboy_handler:terminate(Reason, undefined, HandlerState, Handler),
 	exit(normal).
