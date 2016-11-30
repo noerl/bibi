@@ -27,13 +27,18 @@ websocket_handle({text, MsgBin}, State) ->
 	Name = State#user.name,
 	case proplists:get_value(<<"name">>, MsgList) of
 		Name ->
-			NewMsgList = [{<<"pt">>, ?PROTOCOL_MSG}, {<<"mid">>, 1}, {<<"sid">>, 1}, {<<"rid">>, 2}|MsgList],
-			NewMsgBin = jsx:encode(NewMsgList),
-			bi_room:send(self(), NewMsgBin);
+			Time = os:system_time() div 1000000,
+			CommonMsg = [{<<"mid">>, 1}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"time">>, Time}|MsgList],
+			RecvMsg = [{<<"pt">>, ?PROTOCOL_MSG}|CommonMsg],
+			RecvMsgBin = jsx:encode(RecvMsg),
+			bi_room:send(self(), RecvMsgBin),
+
+			SendMsg = [{<<"pt">>, ?PROTOCOL_ACK}|CommonMsg],
+			SendMsgBin = jsx:encode(SendMsg),
+			{reply, {text, SendMsgBin}, State};
 		_ ->
-			ok
-	end,
-	{ok, State};
+			{ok, State}
+	end;
 websocket_handle(Data, State) ->
 	io:format("[~p:~p] ~p~n", [?MODULE, ?LINE, Data]),
 	{ok, State}.

@@ -81,15 +81,18 @@ input {
 
 #imageLable {
     position: relative;
+    display: inline-block;
 }
 #sendImage {
     position: absolute;
+    width: 100%;
     left: 0;
+    top: 0;
     opacity: 0;
 }
 
 
-#sendArea {
+.sendArea {
     width: 796px;
     height: 40px;
 }

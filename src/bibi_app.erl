@@ -16,9 +16,9 @@ start(normal, []) ->
 	ok = application:start(cowboy),
 	Dispatch = cowboy_router:compile([
 		{'_', [
-			{"/", cowboy_static, {priv_file, bibi, "index.html"}},
 			{"/websocket", ws_handler, []},
-			{"/static/[...]", cowboy_static, {priv_dir, bibi, "static"}}
+			{"/static/[...]", cowboy_static, {priv_dir, bibi, "static"}},
+			{"/[...]", cowboy_static, {priv_file, bibi, "index.html"}}
 		]}
 	]),
 	{ok, _} = cowboy:start_clear(http, 100, [{port, 9022}], #{
