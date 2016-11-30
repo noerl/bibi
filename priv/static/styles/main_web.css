@@ -85,9 +85,8 @@ input {
 }
 #sendImage {
     position: absolute;
-    width: 100%;
-    left: 0;
     top: 0;
+    overflow: hidden;
     opacity: 0;
 }
 
