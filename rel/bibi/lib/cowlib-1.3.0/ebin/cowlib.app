@@ -1,4 +1,4 @@
-%% app generated at {2016,11,23} {22,24,51}
+%% app generated at {2016,12,1} {7,54,45}
 {application,cowlib,
              [{description,"Support library for manipulating Web protocols."},
               {vsn,"1.3.0"},

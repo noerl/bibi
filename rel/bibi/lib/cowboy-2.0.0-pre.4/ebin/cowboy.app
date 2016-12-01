@@ -1,4 +1,4 @@
-%% app generated at {2016,11,23} {22,24,51}
+%% app generated at {2016,12,1} {7,54,44}
 {application,cowboy,
              [{description,"Small, fast, modern HTTP server."},
               {vsn,"2.0.0-pre.4"},

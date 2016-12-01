@@ -1,4 +1,4 @@
-%% rel generated at {2016,11,23} {22,24,48}
+%% rel generated at {2016,12,1} {7,54,35}
 {release,{"bibi","1"},
          {erts,"8.1"},
          [{kernel,"5.1"},

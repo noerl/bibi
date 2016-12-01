@@ -68,7 +68,7 @@ Chat.prototype = {
             document.getElementById('nick').textContent = '连接失败';
         };
 
-        document.getElementById('messageInput').addEventListener('keyup',
+        document.getElementById('messageInput').addEventListener('keypress',
         function(e) {
 
             var messageInput = document.getElementById('messageInput'),
@@ -82,6 +82,14 @@ Chat.prototype = {
                     msg: msg
                 };
                 that.socket.send(JSON.stringify(msgObj));
+            };
+        },
+        false);
+
+        document.getElementById('messageInput').addEventListener('keyup',
+        function(e) {
+            if (e.keyCode == 13) {
+                document.getElementById('messageInput').value = '';
             };
         },
         false);
@@ -131,9 +139,9 @@ Chat.prototype = {
         document.getElementById('emoji').addEventListener('click',
         function(e) {
             var emojiwrapper = document.getElementById('emojiWrapper');
-            if(emojiwrapper.style.display == 'none'){
+            if (emojiwrapper.style.display == 'none') {
                 emojiwrapper.style.display = 'block';
-            }else{
+            } else {
                 emojiwrapper.style.display = 'none';
             };
             e.stopPropagation();
@@ -179,12 +187,13 @@ Chat.prototype = {
         var container = document.getElementById('historyMsg'),
         msgToDisplay = document.createElement('p'),
         date = new Date(content.time).toTimeString().substr(0, 8),
-
         //determine whether the msg contains emoji
-        msg = this._showEmoji(content.msg);
+        msg = this._html2Escape(content.msg);
+        msg = this._showEmoji(msg);
         msgToDisplay.style.color = color || '#000';
         msgToDisplay.innerHTML = content.name + '<span class="timespan">(' + date + '): </span>' + msg;
         container.appendChild(msgToDisplay);
+
         container.scrollTop = container.scrollHeight;
     },
     _displayImage: function(content, color) {
@@ -209,5 +218,17 @@ Chat.prototype = {
             };
         };
         return result;
+    },
+
+    _html2Escape: function(sHtml) {
+        return sHtml.replace(/[<>&"]/g,
+        function(c) {
+            return {
+                '<': '&lt;',
+                '>': '&gt;',
+                '&': '&amp;',
+                '"': '&quot;'
+            } [c];
+        });
     }
 };

@@ -1,8 +1,8 @@
-run_erl [12970] Wed Nov 23 22:25:35 2016
+run_erl [19329] Thu Dec  1 07:55:29 2016
 Args before exec of shell:
-run_erl [12970] Wed Nov 23 22:25:35 2016
+run_erl [19329] Thu Dec  1 07:55:29 2016
 argv[0] = sh
-run_erl [12970] Wed Nov 23 22:25:35 2016
+run_erl [19329] Thu Dec  1 07:55:29 2016
 argv[1] = -c
-run_erl [12970] Wed Nov 23 22:25:35 2016
+run_erl [19329] Thu Dec  1 07:55:29 2016
 argv[2] = exec /home/bibi/rel/bibi/bin/bibi console '' 
