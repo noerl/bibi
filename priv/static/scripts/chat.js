@@ -26,26 +26,28 @@ Chat.prototype = {
         };
 
         function onMessage(evt) {
-            var content = JSON.parse(evt.data),
-            color;
-            switch (content.pt) {
-            case 1000:
-                user = content;
-                document.getElementById("nick").innerHTML = user.name;
-                break;
-            case 1001:
-                color = '#000000';
-                handleMsg(content, color);
-                // sendAck();
-                break;
-            case 1101:
-                // ack 响应
-                color = '#c00';
-                handleMsg(content, color);
-                break;
-            default:
-                console.log("error pt:" + content);
+            var content = JSON.parse(evt.data), color;
+            for(var i = 0; i < content.length; i++){
+                switch (content[i].pt) {
+                case 1000:
+                    user = content[i];
+                    document.getElementById("nick").innerHTML = user.name;
+                    break;
+                case 1001:
+                    color = '#000000';
+                    handleMsg(content[i], color);
+                    // sendAck();
+                    break;
+                case 1101:
+                    // ack 响应
+                    color = '#c00';
+                    handleMsg(content[i], color);
+                    break;
+                default:
+                    console.log("error pt:" + content[i]);
+                };
             };
+            
             //     var msg = nickName + (type == 'login' ? ' joined' : ' left');
             //     that._displayNewMsg('system ', msg, 'red');
             //     document.getElementById('status').textContent = userCount + (userCount > 1 ? ' users' : ' user') + ' online';
@@ -119,6 +121,11 @@ Chat.prototype = {
                 reader = new FileReader();
                 if (!reader) {
                     alert("浏览器不支持文件读取");
+                    this.value = '';
+                    return;
+                };
+                if (file.size > 5242880) {
+                    alert("图像大小大于5MB");
                     this.value = '';
                     return;
                 };

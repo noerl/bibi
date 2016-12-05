@@ -23,5 +23,6 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, []} }.
+	MsgQueue = ?CHILD(bi_queue, worker),
+    {ok, { {one_for_one, 5, 10}, [MsgQueue]} }.
 

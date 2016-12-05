@@ -17,9 +17,10 @@ init(Req, Opts) ->
 
 websocket_init([]) ->
 	Name = bi_room:name(),
-	MsgList = [{<<"pt">>, ?PROTOCOL_LOGIN}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"name">>, Name}],
-	MsgJson = jsx:encode(MsgList),
-	{reply, {text, MsgJson}, #user{name = Name}}.
+	MsgList = gen_server:call(bi_queue, history),
+	InitList = [[{<<"pt">>, ?PROTOCOL_LOGIN}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"name">>, Name}]|MsgList],
+	InitData = jsx:encode(InitList),
+	{reply, {text, InitData}, #user{name = Name}}.
 
 
 websocket_handle({text, MsgBin}, State) ->
@@ -30,10 +31,11 @@ websocket_handle({text, MsgBin}, State) ->
 			Time = os:system_time() div 1000000,
 			CommonMsg = [{<<"mid">>, 1}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"time">>, Time}|MsgList],
 			RecvMsg = [{<<"pt">>, ?PROTOCOL_MSG}|CommonMsg],
-			RecvMsgBin = jsx:encode(RecvMsg),
+			RecvMsgBin = jsx:encode([RecvMsg]),
 			bi_room:send(self(), RecvMsgBin),
+			gen_server:cast(bi_queue, {join, RecvMsg}),
 
-			SendMsg = [{<<"pt">>, ?PROTOCOL_ACK}|CommonMsg],
+			SendMsg = [[{<<"pt">>, ?PROTOCOL_ACK}|CommonMsg]],
 			SendMsgBin = jsx:encode(SendMsg),
 			{reply, {text, SendMsgBin}, State};
 		_ ->

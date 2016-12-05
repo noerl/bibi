@@ -21,7 +21,7 @@ start(normal, []) ->
 			{"/[...]", cowboy_static, {priv_file, bibi, "index.html"}}
 		]}
 	]),
-	{ok, _} = cowboy:start_clear(http, 100, [{port, 9022}], #{
+	{ok, _} = cowboy:start_clear(http, 100, [{port, 80}], #{
 		env => #{dispatch => Dispatch}
 	}),
 	bi_room:init(),
