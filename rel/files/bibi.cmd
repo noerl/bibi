@@ -29,6 +29,12 @@
     @set sys_config="%node_root%\etc\app.config"
 )
 
+@if exist "%releases_dir%\%release_version%\bibi.config" (
+    @set bibi_config="%releases_dir%\%release_version%\bibi.config"
+) else (
+    @set bibi_config="%node_root%\etc\app.config"
+)
+
 @set node_boot_script=%releases_dir%\%release_version%\%node_name%
 @set clean_boot_script=%releases_dir%\%release_version%\start_clean
 
@@ -83,7 +89,7 @@
 @goto :EOF
 
 :console
-@start "%node_name% console" %werl% -boot "%node_boot_script%" -config "%sys_config%" -args_file "%vm_args%" -sname %node_name%
+@start "%node_name% console" %werl% -boot "%node_boot_script%" -config "%sys_config%" -config "%bibi_config%" -args_file "%vm_args%" -sname %node_name%
 @goto :EOF
 
 :ping

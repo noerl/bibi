@@ -90,6 +90,14 @@ else
     fi
 fi
 
+
+if [ -e "$USE_DIR/sys.config" ]; then
+    BIBI_PATH="$USE_DIR/bibi.config"
+else
+    BIBI_PATH="$RUNNER_BASE_DIR/releases/$APP_VSN/bibi.config"
+fi
+
+
 # Extract the target node name from node.args
 NAME_ARG=`egrep '^\-s?name' $VMARGS_PATH`
 if [ -z "$NAME_ARG" ]; then
@@ -374,7 +382,7 @@ case "$1" in
         BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
         EMU=beam
         PROGNAME=`echo $0 | sed 's/.*\\///'`
-        CMD="$BINDIR/erlexec $SLIM_ARGS -boot $RUNNER_BASE_DIR/releases/$APP_VSN/$BOOTFILE -mode embedded -config $CONFIG_PATH -args_file $VMARGS_PATH"
+        CMD="$BINDIR/erlexec $SLIM_ARGS -boot $RUNNER_BASE_DIR/releases/$APP_VSN/$BOOTFILE -mode embedded -config $CONFIG_PATH -config $BIBI_PATH -args_file $VMARGS_PATH"
         export EMU
         export ROOTDIR
         export BINDIR
@@ -402,7 +410,7 @@ case "$1" in
         BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
         EMU=beam
         PROGNAME=`echo $0 | sed 's/.*\///'`
-        CMD="$BINDIR/erlexec $SLIM_ARGS $FOREGROUNDOPTIONS -boot $RUNNER_BASE_DIR/releases/$APP_VSN/$BOOTFILE -config $CONFIG_PATH -args_file $VMARGS_PATH"
+        CMD="$BINDIR/erlexec $SLIM_ARGS $FOREGROUNDOPTIONS -boot $RUNNER_BASE_DIR/releases/$APP_VSN/$BOOTFILE -config $CONFIG_PATH -config $BIBI_PATH -args_file $VMARGS_PATH"
         export EMU
         export ROOTDIR
         export BINDIR

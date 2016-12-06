@@ -1,0 +1,2 @@
+-define(PORT, 		80).
+-define(CONNECTS,  100).
