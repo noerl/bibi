@@ -10,7 +10,9 @@
 %% ===================================================================
 
 start(normal, []) ->
+	ok = application:start(inets),
 	ok = application:start(crypto),
+	ok = ssl:start(),
 	ok = application:start(cowlib),
 	ok = application:start(ranch),
 	ok = application:start(cowboy),
