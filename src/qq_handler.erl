@@ -1,6 +1,8 @@
 -module(qq_handler).
 
--export([init/2, loop/1]).
+-include("chat.hrl").
+
+-export([init/2, loop/1, hash2/2]).
 
 init(Req0, Opts) ->
 	Method = cowboy_req:method(Req0),
@@ -24,10 +26,6 @@ login(<<"GET">>, Req) ->
 login(Method, Req) ->
 	{Method, Req}.
 
-
-
-% login_server() ->
-% 	"https://ui.ptlogin2.qq.com/cgi-bin/login?daid=164&target=self&style=16&mibao_css=m_webqq&appid=501004106&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2F%2Fw.qq.com%2Fproxy.html&f_url=loginerroralert&strong_login=1&login_state=10&t=20131024001"
 
 
 loop(Cookie) ->
@@ -78,20 +76,21 @@ create_cookie(Ptweb, ResponseHeader) ->
 
 
 getvf(Ptweb, Cookie) ->
-	GetvfUrl = "http://s.web2.qq.com/api/getvfwebqq?" ++ Ptweb ++ "&clientid=53999199&psessionid=&t=1481296800505",
+	Time = unixtime(),
+	GetvfUrl = lists:concat(["http://s.web2.qq.com/api/getvfwebqq?", Ptweb, "&clientid=53999199&psessionid=&t=", Time]),
 	case httpc:request(get, {GetvfUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
-			Vfwebqq = proplists:get_value(<<"vfwebqq">>, Result),
-			io:format("get list info Vfwebqq:~p~n", [Vfwebqq]),
-			login2(Ptweb, Cookie);
+			VfwebqqBin = proplists:get_value(<<"vfwebqq">>, Result),
+			Vfwebqq = binary_to_list(VfwebqqBin),
+			login2(Ptweb, Vfwebqq, Cookie);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
 	end.
 
 
-login2(Ptweb, Cookie) ->
+login2(Ptweb, Vfwebqq, Cookie) ->
 	Login2Url = "http://d1.web2.qq.com/channel/login2",
 	[_, PtwebValue] = string:tokens(Ptweb, "="),
 	Body = "r={\"ptwebqq\":\"" ++ PtwebValue ++ "\",\"clientid\":53999199,\"psessionid\":\"\",\"status\":\"online\"}",
@@ -99,13 +98,84 @@ login2(Ptweb, Cookie) ->
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
 			Psessionid = proplists:get_value(<<"psessionid">>, Result),
-			poll2(Ptweb, Cookie, Psessionid);
+			Uin = proplists:get_value(<<"uin">>, Result),
+			
+			Hash = hash2(Uin, PtwebValue),
+			user_friend(Vfwebqq, Hash, Cookie),
+			group_name_list(Vfwebqq, Hash, Cookie),
+			discus_list(Psessionid, Vfwebqq, Cookie),
+			self_info(Cookie),
+			online_buddies(Psessionid, Vfwebqq, Cookie),
+			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
 	end.
 
-poll2(Ptweb, Cookie, Psessionid) ->
+user_friend(Vfwebqq, Hash, Cookie) ->
+	UserFriendUrl = "http://s.web2.qq.com/api/get_user_friends2",
+	Body = "r={\"vfwebqq\":\"" ++ Vfwebqq ++ "\",\"hash\":\"" ++  Hash ++ "\"}",
+	case httpc:request(post, {UserFriendUrl, [{"cookie", Cookie}, {"te", "gzip, deflate"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}], "application/x-www-form-urlencoded", Body}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("user_friend:~ts~n", [Response]);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+group_name_list(Vfwebqq, Hash, Cookie) ->
+	UserFriendUrl = "http://s.web2.qq.com/api/get_group_name_list_mask2",
+	Body = "r={\"vfwebqq\":\"" ++ Vfwebqq ++ "\",\"hash\":\"" ++  Hash ++ "\"}",
+	case httpc:request(post, {UserFriendUrl, [{"cookie", Cookie}, {"te", "gzip, deflate"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}], "application/x-www-form-urlencoded", Body}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("group_name_list:~ts~n", [Response]);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+discus_list(PsessionidBin, Vfwebqq, Cookie) ->
+	Psessionid = binary_to_list(PsessionidBin),
+	Time = unixtime(),
+	DiscusUrl = lists:concat(["http://s.web2.qq.com/api/get_discus_list?clientid=53999199&psessionid=", Psessionid, "&vfwebqq=", Vfwebqq, "&t=", Time]),
+	case httpc:request(get, {DiscusUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("discus_list:~ts~n", [Response]);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+
+self_info(Cookie) ->
+	Time = unixtime(),
+	SelfInfoUrl = lists:concat(["http://s.web2.qq.com/api/get_self_info2?t=", Time]),
+	case httpc:request(get, {SelfInfoUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("self_info:~ts~n", [Response]);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+online_buddies(PsessionidBin, Vfwebqq, Cookie) ->
+	Psessionid = binary_to_list(PsessionidBin),
+	Time = unixtime(),
+	DiscusUrl = lists:concat(["http://d1.web2.qq.com/channel/get_online_buddies2?vfwebqq=", Vfwebqq, "&clientid=53999199&psessionid=", Psessionid, "&t=", Time]),
+	case httpc:request(get, {DiscusUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://d1.web2.qq.com/proxy.html?v=20151105001&callback=1&id=2"}]}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("online_buddies:~ts~n", [Response]);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+poll2(Ptweb, Vfwebqq, Cookie, Psessionid) ->
 	Login2Url = "https://d1.web2.qq.com/channel/poll2",
 	[_, PtwebValue] = string:tokens(Ptweb, "="),
 	BodyList = [{<<"ptwebqq">>, list_to_binary(PtwebValue)}, {<<"clientid">>, 53999199}, {<<"psessionid">>, Psessionid}, {<<"key">>, <<>>}],
@@ -117,16 +187,115 @@ poll2(Ptweb, Cookie, Psessionid) ->
 			case ResultList of
 				[Result] -> 
 					Value = proplists:get_value(<<"value">>, Result),
-					io:format("Value:~p~n", [Value]),
+					Gid = proplists:get_value(<<"group_code">>, Value),
 					[_Font|Msg] = proplists:get_value(<<"content">>, Value),
-					Fid = proplists:get_value(<<"from_uin">>, Value),
-					Tid = proplists:get_value(<<"to_uin">>, Value),
-					io:format("Fid:~p Tid:~p Msg:~p~n", [Fid, Tid, Msg]);
+					Fid = proplists:get_value(<<"send_uin">>, Value),
+					Time = proplists:get_value(<<"time">>, Value),
+					Mid = proplists:get_value(<<"msg_id">>, Value),
+					MsgBin = msg_to_bin(Msg, <<>>),
+					Name = name(Gid, Vfwebqq, Cookie, Fid),
+					msg(Name, Mid, Time, MsgBin),
+					poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 				_ ->
-					io:format("ResultList:~p~n", [ResultList])
-			end,
-			poll2(Ptweb, Cookie, Psessionid);
+					io:format("ResultList:~ts~n", [Response])
+			end;
+		{ok,{{"HTTP/1.1",504,"Gateway Time-out"}, _, _}} ->
+			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
+		{ok,{{"HTTP/1.1",502,"Bad Gateway"}, _, _}} ->
+			 poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
 	end.
+
+msg_to_bin([[<<"face">>, FaceId]|List], MsgBin) ->
+	MsgBin1 = <<MsgBin/binary, <<"[face:">>/binary, (integer_to_binary(FaceId))/binary, <<"]">>/binary>>,
+	msg_to_bin(List, MsgBin1);
+msg_to_bin([Bin|List], MsgBin) ->
+	MsgBin1 = <<MsgBin/binary, Bin/binary>>,
+	msg_to_bin(List, MsgBin1);
+msg_to_bin([], MsgBin) -> MsgBin.
+
+
+msg(Name, Mid, Time, Msg) ->
+	RecvMsg = [{<<"pt">>, ?PROTOCOL_MSG}, {<<"mid">>, Mid}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"time">>, Time}, {<<"name">>, Name}, {<<"type">>, 1}, {<<"msg">>, Msg}],
+	RecvMsgBin = jsx:encode([RecvMsg]),
+	bi_room:send(undefined, RecvMsgBin),
+	gen_server:cast(bi_queue, {join, RecvMsg}).
+
+
+name(GCode, VfwebQQ, Cookie, Id) ->
+	case get(GCode) of
+		CardList when is_list(CardList) ->
+			proplists:get_value(Id, CardList, Id);
+		_ ->
+			case group_ext(GCode, VfwebQQ, Cookie) of
+				[] -> Id;
+				CardList1 -> 
+					proplists:get_value(Id, CardList1, Id)
+			end
+	end.
+
+
+
+group_ext(GCode, VfwebQQ, Cookie) ->
+	Time = unixtime(),
+	GroupExt = lists:concat(["http://s.web2.qq.com/api/get_group_info_ext2?gcode=", GCode, "&vfwebqq=", VfwebQQ, "&t=", Time]),
+	case httpc:request(get, {GroupExt, [{"content-type", "utf-8"}, {"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [{timeout, 3000}], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			case Result of
+				undefined -> [];
+				_ ->
+					case proplists:get_value(<<"minfo">>, Result) of
+						undefined -> [];
+						Cards ->
+							CardList = [{proplists:get_value(<<"uin">>, One), proplists:get_value(<<"nick">>, One)} || One <- Cards],
+							put(GCode, CardList),
+							CardList
+					end
+			end;
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
+
+unixtime() ->
+	{S1,S2,S3} = erlang:timestamp(),
+	S1 * 1000000000 + S2 * 1000 + S3 div 1000.
+
+
+ptb([H|List], 0, Ptb0, Ptb1, Ptb2, Ptb3) ->
+	NewPtb0 = Ptb0 bxor H,
+	ptb(List, 1, NewPtb0, Ptb1, Ptb2, Ptb3);
+ptb([H|List], 1, Ptb0, Ptb1, Ptb2, Ptb3) ->
+	NewPtb1 = Ptb1 bxor H,
+	ptb(List, 2, Ptb0, NewPtb1, Ptb2, Ptb3);
+ptb([H|List], 2, Ptb0, Ptb1, Ptb2, Ptb3) ->
+	NewPtb2 = Ptb2 bxor H,
+	ptb(List, 3, Ptb0, Ptb1, NewPtb2, Ptb3);
+ptb([H|List], 3, Ptb0, Ptb1, Ptb2, Ptb3) ->
+	NewPtb3 = Ptb3 bxor H,
+	ptb(List, 0, Ptb0, Ptb1, Ptb2, NewPtb3);
+ptb([], _, Ptb0, Ptb1, Ptb2, Ptb3) ->
+	{Ptb0, Ptb1, Ptb2, Ptb3}.
+
+hash2(Uin, Ptvfwebqq) ->
+	{Ptb0, Ptb1, Ptb2, Ptb3} = ptb(Ptvfwebqq, 0, 0, 0, 0, 0),
+
+	% var salt = ["EC", "OK"];
+	Uin0 = ((Uin bsr 24) band 255) bxor 69,
+	Uin1 = ((Uin bsr 16) band 255) bxor 67,
+	Uin2 = ((Uin bsr 8) band 255) bxor 79,
+	Uin3 = (Uin band 255) bxor 75,
+
+    Result = [Ptb0, Uin0, Ptb1, Uin1, Ptb2, Uin2, Ptb3, Uin3],
+    HexList = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"],
+    Fun = fun(Byte) ->
+    		Index1 = ((Byte bsr 4) band 15) + 1,
+    		Index2 = (Byte band 15) + 1,
+    		[lists:nth(Index1, HexList), lists:nth(Index2, HexList)]
+    	end,
+    BufList = lists:map(Fun, Result),
+   	lists:flatten(BufList).

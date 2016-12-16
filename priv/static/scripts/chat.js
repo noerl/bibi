@@ -184,7 +184,7 @@ Chat.prototype = {
         docFragment = document.createDocumentFragment();
         for (var i = 69; i > 0; i--) {
             var emojiItem = document.createElement('img');
-            emojiItem.src = '../static/content/emoji/' + i + '.gif';
+            emojiItem.src = '../static/image/tusiji/' + i + '.gif';
             emojiItem.title = i;
             docFragment.appendChild(emojiItem);
         };
@@ -196,7 +196,8 @@ Chat.prototype = {
         date = new Date(content.time).toTimeString().substr(0, 8),
         //determine whether the msg contains emoji
         msg = this._html2Escape(content.msg);
-        msg = this._showEmoji(msg);
+        msg = this._showEmoji(msg),
+        msg = this._showMoji(msg),
         msgToDisplay.style.color = color || '#000';
         msgToDisplay.innerHTML = content.name + '<span class="timespan">(' + date + '): </span>' + msg;
         container.appendChild(msgToDisplay);
@@ -221,7 +222,25 @@ Chat.prototype = {
             if (emojiIndex > totalEmojiNum) {
                 result = result.replace(match[0], '[X]');
             } else {
-                result = result.replace(match[0], '<img class="emoji" src="../static/content/emoji/' + emojiIndex + '.gif" />');
+                result = result.replace(match[0], '<img class="emoji" src="../static/image/tusiji/' + emojiIndex + '.gif" />');
+            };
+        };
+        return result;
+    },
+
+    _showMoji: function(msg) {
+        var FACE_MAP = [14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 15, 16, 96, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 89, 113, 114, 115, 60, 61, 46, 63, 64, 116, 66, 67, 53, 54, 55, 56, 57, 117, 59, 75, 74, 69, 49, 76, 77, 78, 79, 118, 119, 120, 121, 122, 123, 124, 42, 85, 43, 41, 86, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170];
+        var FACE_WEB_MAP = [14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 50, 51, 96, 53, 54, 73, 74, 75, 76, 77, 78, 55, 56, 57, 58, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 32, 113, 114, 115, 63, 64, 59, 33, 34, 116, 36, 37, 38, 91, 92, 93, 29, 117, 72, 45, 42, 39, 62, 46, 47, 71, 95, 118, 119, 120, 121, 122, 123, 124, 27, 21, 23, 25, 26, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170];
+        var match, result = msg,
+        reg = /\[face:\d+\]/g,
+        faceCode, totalEmojiNum = 170;
+        while (match = reg.exec(msg)) {
+            faceCode = Number(match[0].slice(6, -1));
+            if (faceCode > totalEmojiNum) {
+                result = result.replace(match[0], '[X]');
+            } else {
+                var faceWebIndex = FACE_WEB_MAP.indexOf(faceCode);
+                result = result.replace(match[0], '<img class="emoji" src="http://pub.idqqimg.com/lib/qqface/' + FACE_MAP[faceWebIndex] + '.gif" />');
             };
         };
         return result;
