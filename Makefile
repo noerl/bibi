@@ -14,7 +14,8 @@ help:
 	@echo "说明: "
 	@echo "    make co 		编译"
 	@echo "    make rel		打包"
-	@echo "    make run		运行"
+	@echo "    make start		运行"
+	@echo "    make stop		停止"
 	@echo "    make clean		清除"
 	@echo "    make distclean  	清除依赖项目"
 	@echo
@@ -38,8 +39,11 @@ rel:
 	sed -i "s/127.0.0.1/$(IP)/g" ./rel/files/vm.args
 	cd ./rel/ && ../rebar generate
 
-run:
+start:
 	./rel/bibi/bin/bibi start
+
+stop:
+	./rel/bibi/bin/bibi stop
 
 onekey: co rel
 	./rel/bibi/bin/bibi console
