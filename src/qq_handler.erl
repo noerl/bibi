@@ -70,9 +70,14 @@ create_cookie(Ptweb, ResponseHeader) ->
 	[Puin|_] = string:tokens(PuinStr, ";"),
 	[Pskey|_] = string:tokens(PskeyStr, ";"),
 	[Pt4Token|_] = string:tokens(Pt4TokenStr, ";"),
-	NewCookieList = lists:join("; ", [Pt2gguin, Uin, Skey, Puin, Pskey, Pt4Token, Ptweb]),
+	NewCookieList = join("; ", [Pt2gguin, Uin, Skey, Puin, Pskey, Pt4Token, Ptweb]),
 	lists:concat(NewCookieList).
 
+join(_Sep, []) -> [];
+join(Sep, [H|T]) -> [H|join_prepend(Sep, T)].
+
+join_prepend(_Sep, []) -> [];
+join_prepend(Sep, [H|T]) -> [Sep,H|join_prepend(Sep,T)].
 
 
 getvf(Ptweb, Cookie) ->
@@ -104,8 +109,10 @@ login2(Ptweb, Vfwebqq, Cookie) ->
 			user_friend(Vfwebqq, Hash, Cookie),
 			group_name_list(Vfwebqq, Hash, Cookie),
 			discus_list(Psessionid, Vfwebqq, Cookie),
-			self_info(Cookie),
+			_Face = self_info(Cookie),
 			online_buddies(Psessionid, Vfwebqq, Cookie),
+			% send_group_msg(1171821961, Face, Psessionid, Cookie),
+			% send_group_msg(Face, Psessionid, Cookie),
 			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
@@ -129,7 +136,15 @@ group_name_list(Vfwebqq, Hash, Cookie) ->
 	Body = "r={\"vfwebqq\":\"" ++ Vfwebqq ++ "\",\"hash\":\"" ++  Hash ++ "\"}",
 	case httpc:request(post, {UserFriendUrl, [{"cookie", Cookie}, {"te", "gzip, deflate"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}], "application/x-www-form-urlencoded", Body}, [], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
-			io:format("group_name_list:~ts~n", [Response]);
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			Gnamelist = proplists:get_value(<<"gnamelist">>, Result),
+			Fun = fun(NameList) ->
+					{proplists:get_value(<<"name"/utf8>>, NameList),
+					 proplists:get_value(<<"gid"/utf8>>, NameList)}
+			end,
+			GroupList = lists:map(Fun, Gnamelist),
+			put(group_list, GroupList),
+			io:format("group_name_list:~p~n", [GroupList]);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
@@ -155,7 +170,9 @@ self_info(Cookie) ->
 	SelfInfoUrl = lists:concat(["http://s.web2.qq.com/api/get_self_info2?t=", Time]),
 	case httpc:request(get, {SelfInfoUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
-			io:format("self_info:~ts~n", [Response]);
+			io:format("self_info:~ts~n", [Response]),
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			proplists:get_value(<<"face">>, Result);
 		_Error ->
 			io:format("_Error:~p~n", [_Error]),
 			_Error
@@ -260,6 +277,34 @@ group_ext(GCode, VfwebQQ, Cookie) ->
 			_Error
 	end.
 
+send_group_msg(Face, Psessionid, Cookie) ->
+	GroupList =
+		case get(group_list) of
+			undefined -> [];
+			List -> List
+		end,
+	Fun = fun({_Name, Gid}) ->
+			send_group_msg(Gid, Face, Psessionid, Cookie)
+	end,
+	lists:foreach(Fun, GroupList).
+
+
+
+send_group_msg(Gid, Face, Psessionid, Cookie) ->
+	GidBin = integer_to_binary(Gid),
+	GroupMsgUrl = "https://d1.web2.qq.com/channel/send_qun_msg2",
+	Mid = msg_id(),
+	MidBin = integer_to_binary(Mid),
+	FaceBin = integer_to_binary(Face),
+	Body = <<<<"r={\"group_uin\":">>/binary, GidBin/binary, <<",\"content\":\"[\\\"">>/binary, <<"早上好，各位小伙伴！"/utf8>>/binary, <<"\\\",[\\\"font\\\",{\\\"name\\\":\\\"宋体\\\",\\\"size\\\":10,\\\"style\\\":[0,0,0],\\\"color\\\":\\\"000000\\\"}]]\",\"face\":"/utf8>>/binary, FaceBin/binary, <<",\"clientid\":53999199,\"msg_id\":"/utf8>>/binary, MidBin/binary,  <<",\"psessionid\":\"">>/binary, Psessionid/binary, <<"\"}">>/binary>>,
+	case httpc:request(post, {GroupMsgUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, br"}, {"referer","https://d1.web2.qq.com/cfproxy.html?v=20151105001&callback=1"}], "application/x-www-form-urlencoded", Body}, [{timeout, 2000}], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("send_group_msg:~ts~n", [Response]);
+		_Error ->
+			io:format("_Error:~p~n", [_Error]),
+			_Error
+	end.
+
 
 unixtime() ->
 	{S1,S2,S3} = erlang:timestamp(),
@@ -299,3 +344,17 @@ hash2(Uin, Ptvfwebqq) ->
     	end,
     BufList = lists:map(Fun, Result),
    	lists:flatten(BufList).
+
+
+msg_id() ->
+	Time = unixtime(),
+	T1 = Time div 1000,
+	T2 = (T1 rem 10000) * 10000,
+	Seq1 = 
+		case get(sequence) of
+			undefined -> 0;
+			Seq -> Seq
+		end,
+	NewSeq = Seq1 + 1,
+	put(sequence, NewSeq),
+	T2 + NewSeq.
