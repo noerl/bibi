@@ -10,14 +10,16 @@
 %% ===================================================================
 
 start(normal, []) ->
-	ok = application:start(inets),
-	ok = application:start(crypto),
+	ok = inets:start(),
+	ok = crypto:start(),
 	ok = ssl:start(),
+	ok = lager:start(),
 	ok = application:start(cowlib),
 	ok = application:start(ranch),
 	ok = application:start(cowboy),
 	bi_server:start(),
 	bi_room:init(),
+
     bibi_sup:start_link().
 
 stop(_State) ->

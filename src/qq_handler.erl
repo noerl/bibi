@@ -2,7 +2,9 @@
 
 -include("chat.hrl").
 
--export([init/2, loop/1, hash2/2]).
+-export([init/2, loop/1]).
+
+-compile([export_all]).
 
 init(Req0, Opts) ->
 	Method = cowboy_req:method(Req0),
@@ -21,10 +23,10 @@ login(<<"GET">>, Req) ->
 				<<"content-type">> => <<"image/png; charset=utf-8">>
 			}, Response, Req);
 		_Error ->
-			_Error
+			lager:error("ptqrshow request error:~p", [_Error])
 	end;
 login(Method, Req) ->
-	{Method, Req}.
+	lager:error("ptqrshow method error:~p, ~p", [Method, Req]).
 
 
 
@@ -34,34 +36,37 @@ loop(Cookie) ->
 		{ok,{{"HTTP/1.1",200,"OK"}, ResponseHeader, Response}} ->
 			case string:substr(Response, 9, 1) of
 				"6" -> 
-					timer:sleep(2000),
+					timer:sleep(1000),
 					loop(Cookie);
 				"0" -> 
 					CookieList = proplists:get_all_values("set-cookie", ResponseHeader),
 					PtwebCookie = lists:last(CookieList),
+					PtispStr = lists:nth(9, CookieList),
+					RKStr = lists:nth(10, CookieList),
+					[Ptisp|_] = string:tokens(PtispStr, ";"),
+					[RK|_] = string:tokens(RKStr, ";"),
 					[Ptweb|_] = string:tokens(PtwebCookie, ";"),
 					SigUrl = lists:nth(4, string:tokens(Response, "','")),
-					check_sig(SigUrl, Ptweb);
+					check_sig(SigUrl, Ptweb, Ptisp, RK);
 				ErrorCode ->
-					io:format("ErrorCode:~p~n", [ErrorCode])
+					lager:error("ptqrlogin error code:~p", [ErrorCode])
 			end;
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
+			lager:error("ptqrlogin request error:~p", [_Error]),
 			_Error
 	end.
 
-check_sig(SigUrl, Ptweb)->
+check_sig(SigUrl, Ptweb, Ptisp, RK)->
 	case httpc:request(get, {SigUrl, [{"te", "gzip, deflate, sdch"}]}, [{autoredirect, false}], []) of
 		{ok,{{"HTTP/1.1",302,"Found"}, ResponseHeader, _Response}} ->
-			Cookie = create_cookie(Ptweb, ResponseHeader),
+			Cookie = create_cookie(Ptweb, ResponseHeader, Ptisp, RK),
 			getvf(Ptweb, Cookie);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("check_sig request error:~p", [_Error])
 	end.
 
 
-create_cookie(Ptweb, ResponseHeader) ->
+create_cookie(Ptweb, ResponseHeader, Ptisp, RK) ->
 	[Pt2gguinStr, UinStr, SkeyStr, PuinStr, PskeyStr, Pt4TokenStr|_] = 
 		proplists:get_all_values("set-cookie", ResponseHeader),
 	[Pt2gguin|_] = string:tokens(Pt2gguinStr, ";"),
@@ -70,9 +75,18 @@ create_cookie(Ptweb, ResponseHeader) ->
 	[Puin|_] = string:tokens(PuinStr, ";"),
 	[Pskey|_] = string:tokens(PskeyStr, ";"),
 	[Pt4Token|_] = string:tokens(Pt4TokenStr, ";"),
-	NewCookieList = lists:join("; ", [Pt2gguin, Uin, Skey, Puin, Pskey, Pt4Token, Ptweb]),
+	Rand1 = rand() div 10,
+	PgvInfo = lists:concat(["pgv_info=ssid=s", Rand1]),
+	Rand2 = rand(),
+	PgvPvid = lists:concat(["pgv_pvid=", Rand2]),
+	NewCookieList = join("; ", [PgvInfo, PgvPvid, Ptisp, RK, Pt2gguin, Uin, Skey, Puin, Pskey, Pt4Token, Ptweb]),
 	lists:concat(NewCookieList).
 
+join(_Sep, []) -> [];
+join(Sep, [H|T]) -> [H|join_prepend(Sep, T)].
+
+join_prepend(_Sep, []) -> [];
+join_prepend(Sep, [H|T]) -> [Sep,H|join_prepend(Sep,T)].
 
 
 getvf(Ptweb, Cookie) ->
@@ -85,8 +99,7 @@ getvf(Ptweb, Cookie) ->
 			Vfwebqq = binary_to_list(VfwebqqBin),
 			login2(Ptweb, Vfwebqq, Cookie);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("getvfwebqq request error:~p", [_Error])
 	end.
 
 
@@ -104,12 +117,13 @@ login2(Ptweb, Vfwebqq, Cookie) ->
 			user_friend(Vfwebqq, Hash, Cookie),
 			group_name_list(Vfwebqq, Hash, Cookie),
 			discus_list(Psessionid, Vfwebqq, Cookie),
-			self_info(Cookie),
+			_Face = self_info(Cookie),
 			online_buddies(Psessionid, Vfwebqq, Cookie),
+			% send_group_msg(1171821961, Face, Psessionid, Cookie),
+			% send_group_msg(Face, Psessionid, Cookie),
 			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("login2 request error:~p", [_Error])
 	end.
 
 user_friend(Vfwebqq, Hash, Cookie) ->
@@ -119,8 +133,7 @@ user_friend(Vfwebqq, Hash, Cookie) ->
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			io:format("user_friend:~ts~n", [Response]);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("get_user_friends2 request error:~p", [_Error])
 	end.
 
 
@@ -129,10 +142,17 @@ group_name_list(Vfwebqq, Hash, Cookie) ->
 	Body = "r={\"vfwebqq\":\"" ++ Vfwebqq ++ "\",\"hash\":\"" ++  Hash ++ "\"}",
 	case httpc:request(post, {UserFriendUrl, [{"cookie", Cookie}, {"te", "gzip, deflate"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}], "application/x-www-form-urlencoded", Body}, [], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
-			io:format("group_name_list:~ts~n", [Response]);
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			Gnamelist = proplists:get_value(<<"gnamelist">>, Result),
+			Fun = fun(NameList) ->
+					{proplists:get_value(<<"gid"/utf8>>, NameList),
+					 proplists:get_value(<<"name"/utf8>>, NameList),
+					 proplists:get_value(<<"code"/utf8>>, NameList)}
+			end,
+			GroupList = lists:map(Fun, Gnamelist),
+			put(group_list, GroupList);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("get_group_name_list_mask2 request error:~p", [_Error])
 	end.
 
 
@@ -144,8 +164,7 @@ discus_list(PsessionidBin, Vfwebqq, Cookie) ->
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			io:format("discus_list:~ts~n", [Response]);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("get_discus_list request error:~p", [_Error])
 	end.
 
 
@@ -155,10 +174,11 @@ self_info(Cookie) ->
 	SelfInfoUrl = lists:concat(["http://s.web2.qq.com/api/get_self_info2?t=", Time]),
 	case httpc:request(get, {SelfInfoUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer", "http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
-			io:format("self_info:~ts~n", [Response]);
+			io:format("self_info:~ts~n", [Response]),
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			proplists:get_value(<<"face">>, Result);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("get_self_info2 request error:~p", [_Error])
 	end.
 
 
@@ -170,8 +190,7 @@ online_buddies(PsessionidBin, Vfwebqq, Cookie) ->
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			io:format("online_buddies:~ts~n", [Response]);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("get_online_buddies2 request error:~p", [_Error])
 	end.
 
 
@@ -195,17 +214,18 @@ poll2(Ptweb, Vfwebqq, Cookie, Psessionid) ->
 					MsgBin = msg_to_bin(Msg, <<>>),
 					Name = name(Gid, Vfwebqq, Cookie, Fid),
 					msg(Name, Mid, Time, MsgBin),
-					poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
+					QQ = real_qq(Fid, Vfwebqq, Cookie),
+					lager:info("~ts[~p]: ~ts", [Name, QQ, MsgBin]);
 				_ ->
-					io:format("ResultList:~ts~n", [Response])
-			end;
+					ok
+			end,
+			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		{ok,{{"HTTP/1.1",504,"Gateway Time-out"}, _, _}} ->
 			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		{ok,{{"HTTP/1.1",502,"Bad Gateway"}, _, _}} ->
 			 poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("poll2 request error:~p", [_Error])
 	end.
 
 msg_to_bin([[<<"face">>, FaceId]|List], MsgBin) ->
@@ -218,13 +238,15 @@ msg_to_bin([], MsgBin) -> MsgBin.
 
 
 msg(Name, Mid, Time, Msg) ->
-	RecvMsg = [{<<"pt">>, ?PROTOCOL_MSG}, {<<"mid">>, Mid}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"time">>, Time}, {<<"name">>, Name}, {<<"type">>, 1}, {<<"msg">>, Msg}],
+	MillTime = Time * 1000,
+	RecvMsg = [{<<"pt">>, ?PROTOCOL_MSG_2}, {<<"mid">>, Mid}, {<<"sid">>, 1}, {<<"rid">>, 2}, {<<"time">>, MillTime}, {<<"name">>, Name}, {<<"type">>, 1}, {<<"msg">>, Msg}],
 	RecvMsgBin = jsx:encode([RecvMsg]),
 	bi_room:send(undefined, RecvMsgBin),
 	gen_server:cast(bi_queue, {join, RecvMsg}).
 
 
-name(GCode, VfwebQQ, Cookie, Id) ->
+name(Gid, VfwebQQ, Cookie, Id) ->
+	GCode = id2code(Gid),
 	case get(GCode) of
 		CardList when is_list(CardList) ->
 			proplists:get_value(Id, CardList, Id);
@@ -236,28 +258,65 @@ name(GCode, VfwebQQ, Cookie, Id) ->
 			end
 	end.
 
+id2code(Gid) ->
+	GroupList =
+		case get(group_list) of
+			undefined -> [];
+			List -> List
+		end,
+	case lists:keyfind(Gid, 1, GroupList) of
+		{Gid, _Name, Code} -> Code;
+		_ -> Gid
+	end.
 
 
 group_ext(GCode, VfwebQQ, Cookie) ->
 	Time = unixtime(),
 	GroupExt = lists:concat(["http://s.web2.qq.com/api/get_group_info_ext2?gcode=", GCode, "&vfwebqq=", VfwebQQ, "&t=", Time]),
-	case httpc:request(get, {GroupExt, [{"content-type", "utf-8"}, {"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [{timeout, 3000}], [{body_format, binary}]) of
+	RequestHead = [{"Content-Type","utf-8"}, {"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}],
+	case httpc:request(get, {GroupExt, RequestHead}, [{timeout, 3000}], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
 			case Result of
-				undefined -> [];
+				undefined -> 
+					lager:warning("group_ext result undefined Response:~ts", [Response]),
+					[];
 				_ ->
-					case proplists:get_value(<<"minfo">>, Result) of
-						undefined -> [];
-						Cards ->
-							CardList = [{proplists:get_value(<<"uin">>, One), proplists:get_value(<<"nick">>, One)} || One <- Cards],
-							put(GCode, CardList),
-							CardList
-					end
+					Cards = proplists:get_value(<<"minfo">>, Result),
+					CardList = [{proplists:get_value(<<"uin">>, One), proplists:get_value(<<"nick">>, One)} || One <- Cards],
+					put(GCode, CardList),
+					CardList
 			end;
 		_Error ->
-			io:format("_Error:~p~n", [_Error]),
-			_Error
+			lager:error("get_group_info_ext2 request error:~p", [_Error]),
+			[]
+	end.
+
+send_group_msg(Face, Psessionid, Cookie) ->
+	GroupList =
+		case get(group_list) of
+			undefined -> [];
+			List -> List
+		end,
+	Fun = fun({_Gid, _Name, Code}) ->
+			send_group_msg(Code, Face, Psessionid, Cookie)
+	end,
+	lists:foreach(Fun, GroupList).
+
+
+
+send_group_msg(Gid, Face, Psessionid, Cookie) ->
+	GidBin = integer_to_binary(Gid),
+	GroupMsgUrl = "https://d1.web2.qq.com/channel/send_qun_msg2",
+	Mid = msg_id(),
+	MidBin = integer_to_binary(Mid),
+	FaceBin = integer_to_binary(Face),
+	Body = <<<<"r={\"group_uin\":">>/binary, GidBin/binary, <<",\"content\":\"[\\\"">>/binary, <<"早上好，各位小伙伴！"/utf8>>/binary, <<"\\\",[\\\"font\\\",{\\\"name\\\":\\\"宋体\\\",\\\"size\\\":10,\\\"style\\\":[0,0,0],\\\"color\\\":\\\"000000\\\"}]]\",\"face\":"/utf8>>/binary, FaceBin/binary, <<",\"clientid\":53999199,\"msg_id\":"/utf8>>/binary, MidBin/binary,  <<",\"psessionid\":\"">>/binary, Psessionid/binary, <<"\"}">>/binary>>,
+	case httpc:request(post, {GroupMsgUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, br"}, {"referer","https://d1.web2.qq.com/cfproxy.html?v=20151105001&callback=1"}], "application/x-www-form-urlencoded", Body}, [{timeout, 2000}], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			io:format("send_group_msg:~ts~n", [Response]);
+		_Error ->
+			lager:error("send_qun_msg2 request error:~p", [_Error])
 	end.
 
 
@@ -299,3 +358,47 @@ hash2(Uin, Ptvfwebqq) ->
     	end,
     BufList = lists:map(Fun, Result),
    	lists:flatten(BufList).
+
+
+msg_id() ->
+	Time = unixtime(),
+	T1 = Time div 1000,
+	T2 = (T1 rem 10000) * 10000,
+	Seq1 = 
+		case get(sequence) of
+			undefined -> 0;
+			Seq -> Seq
+		end,
+	NewSeq = Seq1 + 1,
+	put(sequence, NewSeq),
+	T2 + NewSeq.
+
+
+rand() ->
+	{_S1,_S2,S3} = erlang:timestamp(),
+	S = S3 div 1000,
+	(round((abs(rand:uniform() - 1)) * 2147483647) * S) rem (round(math:pow(10, 10))).
+
+
+
+real_qq(Fid, Vfwebqq, Cookie) ->
+	Key = lists:concat(["qq_uid_", Fid]),
+	case get(Key) of
+		undefined -> request_real_qq(Fid, Vfwebqq, Cookie);
+		QQ -> QQ
+	end.
+
+request_real_qq(Fid, Vfwebqq, Cookie) ->
+	RealQQUrl = lists:concat(["http://s.web2.qq.com/api/get_friend_uin2?tuin=", Fid, "&type=1&vfwebqq=", Vfwebqq]),
+	case httpc:request(get, {RealQQUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
+			QQ = proplists:get_value(<<"account">>, Result),
+			Key = lists:concat(["qq_uid_", Fid]),
+			put(Key, QQ),
+			QQ;
+		_Error ->
+			lager:error("real_qq request error:~p", [_Error])
+	end.
+	
+	
