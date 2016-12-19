@@ -5,7 +5,7 @@ VERSION=1.1.1 #首先定义版本
 # 默认为获取依赖 OTP 项目，然后进行编译
 
 
-IP=`ifconfig|grep "inet "|grep -v "127.0.0.1"|cut -d: -f2|awk '{print $$2}'`
+IP=`ifconfig|grep "inet addr"|grep -v "127.0.0.1"|cut -d: -f2|awk '{print $$1}'`
 
 all: co
 
