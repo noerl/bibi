@@ -330,7 +330,7 @@ send_group_msg(Gid, Face, Psessionid, Cookie) ->
 	MidBin = integer_to_binary(Mid),
 	FaceBin = integer_to_binary(Face),
 	Body = <<<<"r={\"group_uin\":">>/binary, GidBin/binary, <<",\"content\":\"[\\\"">>/binary, <<"早上好，各位小伙伴！"/utf8>>/binary, <<"\\\",[\\\"font\\\",{\\\"name\\\":\\\"宋体\\\",\\\"size\\\":10,\\\"style\\\":[0,0,0],\\\"color\\\":\\\"000000\\\"}]]\",\"face\":"/utf8>>/binary, FaceBin/binary, <<",\"clientid\":53999199,\"msg_id\":"/utf8>>/binary, MidBin/binary,  <<",\"psessionid\":\"">>/binary, Psessionid/binary, <<"\"}">>/binary>>,
-	case httpc:request(post, {GroupMsgUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, br"}, {"referer","https://d1.web2.qq.com/cfproxy.html?v=20151105001&callback=1"}], "application/x-www-form-urlencoded", Body}, [{timeout, 2000}], [{body_format, binary}]) of
+	case httpc:request(post, {GroupMsgUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, br"}, {"referer","https://d1.web2.qq.com/cfproxy.html?v=20151105001&callback=1"}], "application/x-www-form-urlencoded", Body}, [{timeout, 3000}], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			io:format("send_group_msg:~ts~n", [Response]);
 		_Error ->
@@ -408,7 +408,7 @@ real_qq(Fid, Vfwebqq, Psessionid, Cookie) ->
 
 request_real_qq(Fid, Vfwebqq, _Psessionid, Cookie) ->
 	RealQQUrl = lists:concat(["http://s.web2.qq.com/api/get_friend_uin2?tuin=", Fid, "&type=1&vfwebqq=", Vfwebqq]),
-	case httpc:request(get, {RealQQUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
+	case httpc:request(get, {RealQQUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [{timeout, 3000}], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
 			case proplists:get_value(<<"result">>, jsx:decode(Response)) of
 				undefined -> Fid;
