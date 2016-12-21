@@ -17,7 +17,7 @@
             %%       thus declaration of default handlers is done at lager_app.erl
 
             %% What colors to use with what log levels
-            {colored, true},
+            {colored, false},
             {colors, [
               {debug,     "\e[0;38m" },
               {info,      "\e[1;37m" },
@@ -55,13 +55,6 @@
             %% decrease from `async_threshold' to async_threshold -
             %% async_threshold_window. This value only applies to the
             %% default sink; extra sinks can supply their own.
-            {async_threshold_window, 5},
-            {handlers, [  
-                {lager_console_backend, [debug, true]},  
-                {lager_file_backend, [  
-                    {"log/bibi.error.log",   error, 10485760, "$D0", 100},  
-                    {"log/bibi.console.log", info,  10485760, "$D0", 100}  
-                ]}  
-            ]}
+            {async_threshold_window, 5}
         ]}
  ]}.
