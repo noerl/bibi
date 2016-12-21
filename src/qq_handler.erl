@@ -228,7 +228,7 @@ poll2(Ptweb, Vfwebqq, Cookie, Psessionid) ->
 					if  is_binary(Name) ->
 							lager:info("~ts[~p]: ~ts", [Name, QQ, MsgBin]);
 						true ->
-							lager:info("Response: ~ts", [Response])
+							lager:info("~p[~p]: ~ts", [Name, QQ, MsgBin])
 					end;
 				_ ->
 					ok
