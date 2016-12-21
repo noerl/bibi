@@ -1,5 +1,5 @@
 ## Name of the node
--name bibi@192.168.31.244
+-name bibi@115.236.47.243
 ## Cookie for distributed erlang
 -setcookie bibi
 

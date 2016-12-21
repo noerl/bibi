@@ -681,7 +681,7 @@ response_headers(Headers0, Req) ->
 	RespHeaders = maps:get(resp_headers, Req, #{}),
 	Headers = maps:merge(#{
 		<<"date">> => cowboy_clock:rfc1123(),
-		<<"server">> => <<"Cowboy">>
+		<<"server">> => <<"Kuaibupo">>
 	}, maps:merge(RespHeaders, Headers0)),
 	%% The set-cookie header is special; we can only send one cookie per header.
 	%% We send the list of values for many cookies in one key of the map,

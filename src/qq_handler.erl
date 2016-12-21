@@ -121,7 +121,7 @@ login2(Ptweb, Vfwebqq, Cookie) ->
 			online_buddies(Psessionid, Vfwebqq, Cookie),
 			% send_group_msg(1171821961, Face, Psessionid, Cookie),
 			% send_group_msg(Face, Psessionid, Cookie),
-			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
+			poll(Ptweb, Vfwebqq, Cookie, Psessionid);
 		_Error ->
 			lager:error("login2 request error:~p", [_Error])
 	end.
@@ -193,6 +193,15 @@ online_buddies(PsessionidBin, Vfwebqq, Cookie) ->
 			lager:error("get_online_buddies2 request error:~p", [_Error])
 	end.
 
+poll(Ptweb, Vfwebqq, Cookie, Psessionid) ->
+	try 
+		poll2(Ptweb, Vfwebqq, Cookie, Psessionid)
+	catch
+		Type:Reason ->
+			lager:error("~p:~p", [Type, Reason]),
+			poll(Ptweb, Vfwebqq, Cookie, Psessionid)
+	end.
+
 
 poll2(Ptweb, Vfwebqq, Cookie, Psessionid) ->
 	Login2Url = "https://d1.web2.qq.com/channel/poll2",
@@ -214,19 +223,25 @@ poll2(Ptweb, Vfwebqq, Cookie, Psessionid) ->
 					MsgBin = msg_to_bin(Msg, <<>>),
 					Name = name(Gid, Vfwebqq, Cookie, Fid),
 					msg(Name, Mid, Time, MsgBin),
-					QQ = real_qq(Fid, Vfwebqq, Cookie),
-					lager:info("~ts[~p]: ~ts", [Name, QQ, MsgBin]);
+					QQ = real_qq(Fid, Vfwebqq, Psessionid, Cookie),
+					
+					if  is_binary(Name) ->
+							lager:info("~ts[~p]: ~ts", [Name, QQ, MsgBin]);
+						true ->
+							lager:info("Response: ~ts", [Response])
+					end;
 				_ ->
 					ok
-			end,
-			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
+			end;
 		{ok,{{"HTTP/1.1",504,"Gateway Time-out"}, _, _}} ->
-			poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
+			ok;
 		{ok,{{"HTTP/1.1",502,"Bad Gateway"}, _, _}} ->
-			 poll2(Ptweb, Vfwebqq, Cookie, Psessionid);
+			ok;
 		_Error ->
 			lager:error("poll2 request error:~p", [_Error])
-	end.
+	end,
+	poll2(Ptweb, Vfwebqq, Cookie, Psessionid).
+
 
 msg_to_bin([[<<"face">>, FaceId]|List], MsgBin) ->
 	MsgBin1 = <<MsgBin/binary, <<"[face:">>/binary, (integer_to_binary(FaceId))/binary, <<"]">>/binary>>,
@@ -270,7 +285,7 @@ id2code(Gid) ->
 	end.
 
 
-group_ext(GCode, VfwebQQ, Cookie) ->
+group_ext(GCode, VfwebQQ, Cookie) when is_number(GCode) ->
 	Time = unixtime(),
 	GroupExt = lists:concat(["http://s.web2.qq.com/api/get_group_info_ext2?gcode=", GCode, "&vfwebqq=", VfwebQQ, "&t=", Time]),
 	RequestHead = [{"Content-Type","utf-8"}, {"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}],
@@ -290,7 +305,10 @@ group_ext(GCode, VfwebQQ, Cookie) ->
 		_Error ->
 			lager:error("get_group_info_ext2 request error:~p", [_Error]),
 			[]
-	end.
+	end;
+group_ext(GCode, _VfwebQQ, _Cookie) ->
+	lager:error("group_ext gcode error:~p", [GCode]),
+	[].
 
 send_group_msg(Face, Psessionid, Cookie) ->
 	GroupList =
@@ -381,24 +399,40 @@ rand() ->
 
 
 
-real_qq(Fid, Vfwebqq, Cookie) ->
+real_qq(Fid, Vfwebqq, Psessionid, Cookie) ->
 	Key = lists:concat(["qq_uid_", Fid]),
 	case get(Key) of
-		undefined -> request_real_qq(Fid, Vfwebqq, Cookie);
+		undefined -> request_real_qq(Fid, Vfwebqq, Psessionid, Cookie);
 		QQ -> QQ
 	end.
 
-request_real_qq(Fid, Vfwebqq, Cookie) ->
+request_real_qq(Fid, Vfwebqq, _Psessionid, Cookie) ->
 	RealQQUrl = lists:concat(["http://s.web2.qq.com/api/get_friend_uin2?tuin=", Fid, "&type=1&vfwebqq=", Vfwebqq]),
 	case httpc:request(get, {RealQQUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
 		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
-			Result = proplists:get_value(<<"result">>, jsx:decode(Response)),
-			QQ = proplists:get_value(<<"account">>, Result),
-			Key = lists:concat(["qq_uid_", Fid]),
-			put(Key, QQ),
-			QQ;
+			case proplists:get_value(<<"result">>, jsx:decode(Response)) of
+				undefined -> Fid;
+				Result ->
+					% friend_info(Fid, Vfwebqq, Psessionid, Cookie),
+					QQ = proplists:get_value(<<"account">>, Result),
+					Key = lists:concat(["qq_uid_", Fid]),
+					put(Key, QQ),
+					QQ
+			end;
 		_Error ->
-			lager:error("real_qq request error:~p", [_Error])
+			lager:error("real_qq request error:~p", [_Error]),
+			Fid
 	end.
 	
-	
+
+
+friend_info(Fid, Vfwebqq, PsessionidBin, Cookie) ->
+	Psessionid = binary_to_list(PsessionidBin),
+	FriendInfoUrl = lists:concat(["http://s.web2.qq.com/api/get_friend_info2?tuin=", Fid, "&vfwebqq=", Vfwebqq, "&clientid=53999199&psessionid=", Psessionid]),
+	case httpc:request(get, {FriendInfoUrl, [{"cookie", Cookie}, {"te", "gzip, deflate, sdch"}, {"referer","http://s.web2.qq.com/proxy.html?v=20130916001&callback=1&id=1"}]}, [], [{body_format, binary}]) of
+		{ok,{{"HTTP/1.1",200,"OK"}, _ResponseHeader, Response}} ->
+			lager:info("friend_info:~ts", [Response]);
+		_Error ->
+			lager:error("friend_info request error:~p", [_Error]),
+			Fid
+	end.
