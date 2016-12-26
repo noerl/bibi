@@ -1,3 +1,5 @@
 /rel/bibi/
 /ebin/
 /deps/*/ebin
+ebin/bibi.app
+deps/*/.rebar/erlcinfo

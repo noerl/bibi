@@ -33,6 +33,9 @@ Chat.prototype = {
                     user = content[i];
                     document.getElementById("nick").innerHTML = user.name;
                     break;
+                case 1001:
+                    color = '#000000';
+                    handleMsg(content[i], color);
                 case 1002:
                     color = '#000000';
                     handleMsg(content[i], color);

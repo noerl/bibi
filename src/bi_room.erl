@@ -3,7 +3,7 @@
 %% bi_room: bi_room library's entry point.
 
 -export([init/0, name/0, add/1, del/1, send/2, send_msg/2,
-	get_name/0, update_name/2]).
+	get_name/0, update_name/2, add_user/2]).
 
 -record(user,{
 	id,
@@ -83,3 +83,6 @@ send_msg([], _Msg) -> ok.
 
 
 %% End of Module.
+
+add_user(Id, Data) ->
+	ets:insert(user, #user{id = Id, data = Data}).
