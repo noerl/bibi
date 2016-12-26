@@ -1,7 +1,7 @@
 {application, bibi,
  [
   {description, "websocket chat"},
-  {vsn, "1.1.6"},
+  {vsn, "1.1.9"},
   {registered, []},
   {applications, [
                   kernel,
