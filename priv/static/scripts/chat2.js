@@ -36,6 +36,7 @@ Chat.prototype = {
                 case 1001:
                     color = '#000000';
                     handleMsg(content[i], color);
+                    break;
                 case 1002:
                     color = '#000000';
                     handleMsg(content[i], color);

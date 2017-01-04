@@ -109,6 +109,18 @@ getvf(Ptweb, Cookie) ->
 	end.
 
 
+refresh(Uid) ->
+	case ets:lookup(user, Uid) of
+		[{Ptweb, Vfwebqq, Cookie, _Face, _Psessionid}] ->
+			refresh(Ptweb, Vfwebqq, Cookie);
+		_ ->
+			ok
+	end.
+
+refresh(Ptweb, Vfwebqq, Cookie) ->
+	spawn(?MODULE, login2, [Ptweb, Vfwebqq, Cookie]).
+
+
 login2(Ptweb, Vfwebqq, Cookie) ->
 	Login2Url = "http://d1.web2.qq.com/channel/login2",
 	[_, PtwebValue] = string:tokens(Ptweb, "="),
@@ -123,11 +135,11 @@ login2(Ptweb, Vfwebqq, Cookie) ->
 			user_friend(Vfwebqq, Hash, Cookie),
 			group_name_list(Vfwebqq, Hash, Cookie),
 			discus_list(Psessionid, Vfwebqq, Cookie),
-			_Face = self_info(Cookie),
+			Face = self_info(Cookie),
 			online_buddies(Psessionid, Vfwebqq, Cookie),
 			% send_group_msg(1171821961, Face, Psessionid, Cookie),
 			% send_group_msg(Face, Psessionid, Cookie),
-			bi_room:add_user(Uin, {Ptweb, Vfwebqq, Cookie, Psessionid}),
+			bi_room:add_user(Uin, {Ptweb, Vfwebqq, Cookie, Face, Psessionid}),
 			poll(Ptweb, Vfwebqq, Cookie, Psessionid);
 		{error, timeout} ->
 			login2(Ptweb, Vfwebqq, Cookie);
